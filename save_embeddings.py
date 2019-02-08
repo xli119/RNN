@@ -3,13 +3,13 @@
 import argparse
 import os
 import pickle
-import sqlite3
+
 import sys
 import base64
 
 import tensorflow as tf
-from tensorflow.models.embedding import gen_word2vec
 
+word2vec = tf.load_op_library(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'word2vec_ops.so'))
 
 embeddings = {}
 
@@ -43,19 +43,19 @@ def main():
     int2insn_path = config_info['int2insn_path']
 
     with tf.Graph().as_default(), tf.Session() as sess:
-        print "Loading model..."
+        print("Loading model...")
         saver = tf.train.import_meta_graph(model_path + ".meta")
         a = saver.restore(sess, model_path)
-        print "Model loaded"
+        print("Model loaded")
 
-        print "Loading embed input data..."
-        input_data = pickle.load(open(embed_pickle_path))
-        print "Embed input data loaded"
+        print("Loading embed input data...")
+        input_data = pickle.load(open(embed_pickle_path, 'rb'), encoding='latin1')
+        print("Embed input data loaded")
 
-        print "Loading int to instruction map..."
-        int2insn_map = pickle.load(open(int2insn_path))
+        print("Loading int to instruction map...")
+        int2insn_map = pickle.load(open(int2insn_path, 'rb'), encoding='latin1')
         int2insn_map['UNK'] = 'UNK'
-        print "Int to instruction map loaded"
+        print("Int to instruction map loaded")
 
         w_out = [v for v in tf.global_variables() if v.name == "w_out:0"][0]
 
@@ -87,14 +87,14 @@ def main():
 
                 num += 1000
                 if num % 1000 == 0:
-                    print "{} computed ({}%)".format(num, 100.0 * num / total_num)
+                    print("{} computed ({}%)".format(num, 100.0 * num / total_num))
 
 
         if len(ids) > 0:
             part_vector = tf.nn.embedding_lookup(w_out, ids).eval()
             for i in range(len(ids)):
                 word_id = ids[i]
-                word = input_data['id2word'][word_id]
+                word = input_data['id2word'][word_id].decode('utf-8')
                 if word != 'UNK':
                     word = int(word)
 
@@ -103,9 +103,9 @@ def main():
                 embeddings[str(insn)] = {'vector': vector}
 
 
-        print "{} Errors".format(error_num)
-        pickle.dump(embeddings, open(output_file, "w"))
-        print "Done"
+        print("{} Errors".format(error_num))
+        pickle.dump(embeddings, open(output_file, "wb"))
+        print("Done")
 
 if __name__ == '__main__':
     main()
